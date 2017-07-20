@@ -12,9 +12,7 @@ output: pdf_document
 ### Set up 
 ```{r}
 ## Libraries
-
 library(ggplot2)
-
 
 TFBS_df <- read.table("../data/outputs/TFBS_map_DF_all_bicoid_test.csv", sep = "\t", header = TRUE)
 
@@ -28,8 +26,15 @@ TFBS_df <- TFBS_df[complete.cases(TFBS_df), ]
 ## as.factor species
 
 TFBS_df$species <- as.factor(TFBS_df$species)
+TFBS_df$species <- gsub("ludwig_eve-striped-2", "", TFBS_df$species)
+TFBS_df$species <- gsub("[|]", "", TFBS_df$species)
+TFBS_df$species <- gsub("[+]", "", TFBS_df$species)
+TFBS_df$species <- gsub("[-]", "", TFBS_df$species)
 
 dim(TFBS_df)
+
+TFBS_df$species <- as.factor(TFBS_df$species)
+
 str(TFBS_df)
 
 ```
@@ -47,7 +52,7 @@ ggplot(TFBS_df, aes(align_position, fill=species, alpha = .5)) +
 
 ggplot(TFBS_df, aes(align_position,species, alpha = .8, size = score)) +
   geom_point() + 
-  #scale_x_continuous(limits = c(290, 330)) +
+  #scale_x_continuous(limits = c(1, 200)) +
   facet_grid(strand~.) +
   theme_bw() +
   theme(text = element_text(size = 20)) 
