@@ -21,12 +21,12 @@ from collections import defaultdict
 #####################
 
 ## read in alignment and motif 
-## alignment = list(SeqIO.parse(sys.argv[1], "fasta"))
-## motif = motifs.read(open(sys.argv[2],"pfm")
+alignment = list(SeqIO.parse(sys.argv[1], "fasta"))
+motif = motifs.read(open(sys.argv[2]), "pfm")
 
 ## Manual For testing
-alignment = list(SeqIO.parse("../data/fasta/output_ludwig_eve-striped-2.fa", "fasta"))
-motif = motifs.read(open("../data/PWM/transpose_fm/bcd_FlyReg.fm"),"pfm")
+## alignment = list(SeqIO.parse("../data/fasta/output_ludwig_eve-striped-2.fa", "fasta"))
+## motif = motifs.read(open("../data/PWM/transpose_fm/bcd_FlyReg.fm"),"pfm")
 
 raw_sequences = []
 for record in alignment:
