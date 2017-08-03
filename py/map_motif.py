@@ -24,6 +24,13 @@ from collections import defaultdict
 alignment = list(SeqIO.parse(sys.argv[1], "fasta"))
 motif = motifs.read(open(sys.argv[2]), "pfm")
 
+# Used later when marking output file
+alignment_file_name =  os.path.basename(sys.argv[1])
+motif_file_name =  os.path.basename(sys.argv[2])
+
+print alignment_file_name
+print motif_file_name
+
 ## Manual For testing
 ## alignment = list(SeqIO.parse("../data/fasta/output_ludwig_eve-striped-2.fa", "fasta"))
 ## motif = motifs.read(open("../data/PWM/transpose_fm/bcd_FlyReg.fm"),"pfm")
@@ -153,9 +160,13 @@ TFBS_map_DF_all = pd.merge(position_DF, remap_DF, on=['species', 'raw_position']
 ## Sort
 TFBS_map_DF_all = TFBS_map_DF_all.sort_values(by=['species','align_position'], ascending=[True, True])
 
-# Merge - only signal 
-TFBS_map_DF_only_signal = pd.merge(position_DF, remap_DF, on=['species', 'raw_position'], how='inner')
-TFBS_map_DF_only_signal = TFBS_map_DF_only_signal.sort_values(by=['species','align_position'], ascending=[True, True])
+## Attach File Name
+TFBS_map_DF_all['alignment_file'] = alignment_file_name
+TFBS_map_DF_all['motif_file'] = motif_file_name
+
+## Merge - only signal 
+## TFBS_map_DF_only_signal = pd.merge(position_DF, remap_DF, on=['species', 'raw_position'], how='inner')
+## TFBS_map_DF_only_signal = TFBS_map_DF_only_signal.sort_values(by=['species','align_position'], ascending=[True, True])
 
 
 ## Write out Files
