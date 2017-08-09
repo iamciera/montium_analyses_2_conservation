@@ -13,50 +13,74 @@ output: pdf_document
 ```{r}
 ## Libraries
 library(ggplot2)
+library(dplyr)
+library(stringr)
 
-TFBS_df <- read.table("../data/outputs/TFBS_map_DF_all_bicoid_test.csv", sep = "\t", header = TRUE)
+
+TFBS_df <- read.table("../data/outputs/map_motif_output/all.csv", sep = "\t", header = FALSE)
+
+## Kvon data Info
+## kvon <- read.csv("../outputData/dataframe/kvonMergedWithThomasStageSpecific_15November2016.csv", header=T, na.strings=c("","NA"))
+
+## TFBS_df <- read.table("../data/outputs/map_motif_output/subsetTest/map_motif_testoutput_VT8890.fa-zelda_.fm.csv", sep = "\t", header = FALSE)
 
 head(TFBS_df)
-
 TFBS_df <- TFBS_df[,-1]
 
-#remove NAs
-TFBS_df <- TFBS_df[complete.cases(TFBS_df), ]
-
-## as.factor species
-
-TFBS_df$species <- as.factor(TFBS_df$species)
-TFBS_df$species <- gsub("ludwig_eve-striped-2", "", TFBS_df$species)
-TFBS_df$species <- gsub("[|]", "", TFBS_df$species)
-TFBS_df$species <- gsub("[+]", "", TFBS_df$species)
-TFBS_df$species <- gsub("[-]", "", TFBS_df$species)
+colnames(TFBS_df) <- c("position", "score",	"seq_len",	"species", "raw_position",	"strand",	"align_position",	"alignment_file", "motif_file")
 
 dim(TFBS_df)
 
+#remove NAs
+## TFBS_df <- TFBS_df[complete.cases(TFBS_df), ]
+
+
+## as.factor species
+
+head(TFBS_df)
 TFBS_df$species <- as.factor(TFBS_df$species)
 
+speciesSplit  <- data.frame(do.call('rbind', strsplit(as.character(TFBS_df$species), split = "|", fixed = TRUE)))
+
+head(speciesSplit)
+
+TFBS_df <- TFBS_df[,-4]
+
+TFBS_df <- cbind(TFBS_df, speciesSplit$X6)
+colnames(TFBS_df)[9] <- "species"
+
+TFBS_df$alignment_file <- gsub("output_", "", TFBS_df$alignment_file) 
+TFBS_df$alignment_file <- gsub(".fa", "", TFBS_df$alignment_file)
+
+head(TFBS_df)
 str(TFBS_df)
 
+summary(TFBS_df)
 ```
 
 ### Visualization
 
+## To-Do
+
+[ ] Need Phastcons score. 
+[ ] Need to zoom in 
+[ ] Build Shiny app
+[ ] Finish the rest of the 
+[ ] Attach positive and negative presence in insitu
+[ ] 
+
+
+motif_file != "eve_SOLEXA.fm", motif_file != "cad_FlyReg.fm",
+
 ```{r}
-
-ggplot(TFBS_df, aes(align_position, fill=species, alpha = .5)) +
-  geom_bar(stat = "count") +
-  #scale_x_continuous(limits = c(100, 350)) +
-  facet_grid(strand~.) +
-  theme_bw() 
-
-
-ggplot(TFBS_df, aes(align_position,species, alpha = .8, size = score)) +
-  geom_point() + 
-  #scale_x_continuous(limits = c(1, 200)) +
-  facet_grid(strand~.) +
-  theme_bw() +
-  theme(text = element_text(size = 20)) 
+head(TFBS_df)
+TFBS_df %>% filter(alignment_file =="VT8808", score > 6) %>% 
+  ggplot(., aes(align_position,species, size = score, color = motif_file)) +
+    geom_point(alpha = .3) + 
+    facet_grid(strand~.) +
+    theme_bw() +
+    theme(text = element_text(size = 20)) 
 ```
-
+?filter
 
 

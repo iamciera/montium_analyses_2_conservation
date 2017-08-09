@@ -164,10 +164,12 @@ TFBS_map_DF_all = TFBS_map_DF_all.sort_values(by=['species','align_position'], a
 TFBS_map_DF_all['alignment_file'] = alignment_file_name
 TFBS_map_DF_all['motif_file'] = motif_file_name
 
+## Remove NAs
+TFBS_map_DF_all = TFBS_map_DF_all.dropna()   
+
 ## Merge - only signal 
 ## TFBS_map_DF_only_signal = pd.merge(position_DF, remap_DF, on=['species', 'raw_position'], how='inner')
 ## TFBS_map_DF_only_signal = TFBS_map_DF_only_signal.sort_values(by=['species','align_position'], ascending=[True, True])
 
-
 ## Write out Files
-TFBS_map_DF_all.to_csv('../data/outputs/map_motif_test.csv', sep='\t', na_rep="NA")
+TFBS_map_DF_all.to_csv('../data/outputs/map_motif_test' + alignment_file_name + "-" + motif_file_name + ".csv", sep='\t', na_rep="NA")
