@@ -15,47 +15,115 @@ output: pdf_document
 library(ggplot2)
 library(dplyr)
 library(stringr)
+```
 
+## TFBS_df
 
-TFBS_df <- read.table("../data/outputs/map_motif_output/all.csv", sep = "\t", header = FALSE)
+Read in and clean up all TFBS found 
+```{r}
+# This takes about 5 min
+TFBS_df_0 <- read.table("../data/outputs/map_motif_output/all.csv", sep = "\t", header = FALSE)
 
-## Kvon data Info
-## kvon <- read.csv("../outputData/dataframe/kvonMergedWithThomasStageSpecific_15November2016.csv", header=T, na.strings=c("","NA"))
-
-## TFBS_df <- read.table("../data/outputs/map_motif_output/subsetTest/map_motif_testoutput_VT8890.fa-zelda_.fm.csv", sep = "\t", header = FALSE)
-
-head(TFBS_df)
+# So not to have to read in again
+TFBS_df <- TFBS_df_0
 TFBS_df <- TFBS_df[,-1]
 
 colnames(TFBS_df) <- c("position", "score",	"seq_len",	"species", "raw_position",	"strand",	"align_position",	"alignment_file", "motif_file")
 
-dim(TFBS_df)
-
-#remove NAs
-## TFBS_df <- TFBS_df[complete.cases(TFBS_df), ]
-
-
 ## as.factor species
-
 head(TFBS_df)
 TFBS_df$species <- as.factor(TFBS_df$species)
 
+## Retrieve species
+## Takes about 3 min
 speciesSplit  <- data.frame(do.call('rbind', strsplit(as.character(TFBS_df$species), split = "|", fixed = TRUE)))
 
-head(speciesSplit)
-
+## Remove old species id and replace
 TFBS_df <- TFBS_df[,-4]
-
 TFBS_df <- cbind(TFBS_df, speciesSplit$X6)
 colnames(TFBS_df)[9] <- "species"
 
+## Clean up alignment file notation
 TFBS_df$alignment_file <- gsub("output_", "", TFBS_df$alignment_file) 
 TFBS_df$alignment_file <- gsub(".fa", "", TFBS_df$alignment_file)
 
+## Clean up motif_file
+TFBS_df$motif_file <- gsub(".fm", "", TFBS_df$motif_file)
+
+## Check
 head(TFBS_df)
 str(TFBS_df)
-
 summary(TFBS_df)
+```
+
+## PhastCons score per alignment
+
+Read in and clean up PhastCons scores.
+
+```{r}
+# takes about 2 min
+cons_scores_0 <- read.csv("../data/outputs/consScore/all_consScore.csv")
+
+## so not to reload dataset
+cons_scores <- cons_scores_0
+
+cons_scores <- cons_scores[,-1]
+colnames(cons_scores)[1] <- "position"
+head(cons_scores)
+
+colnames(cons_scores)[3] <- "alignment_file"
+cons_scores$alignment_file <- gsub(".fa", "", cons_scores$alignment_file)
+cons_scores$alignment_file <- gsub("output_", "", cons_scores$alignment_file) 
+
+colnames(cons_scores)[1] <- "align_position"
+```
+
+## Kvon data about expression in D. mel
+
+```{r}
+## Kvon data Info
+kvon <- read.csv("../../montium_analyses_1_alignment/outputData/dataframe/kvonMergedWithThomasStageSpecific_15November2016.csv", header=T, na.strings=c("","NA"), check.names = TRUE)
+kvon <- kvon[,-1]
+
+colnames(kvon)[3] <- "alignment_file"
+colnames(kvon)[5:9] <- c("DNase_Peaks_stage09", "DNase_Peaks_stage10", "DNase_Peaks_stage11", "DNase_Peaks_stage14", "DNase_Peaks_sumStages")
+colnames(kvon)[12] <- "positive_GAL4_anyStage"
+```
+
+## Merge Data?
+
+```{r}
+## head(TFBS_df) # keep all
+## head(cons_scores) # keep all
+## test <- merge(cons_scores, TFBS_df, by = c("alignment_file", "align_position"))
+
+kvon_sub <- kvon[,c(3,12,13,9)]
+head(kvon_sub)
+length(levels(as.factor(kvon_sub$alignment_file))) #7792
+
+TFBS_kvon_df <- merge(TFBS_df, kvon_sub, by = "alignment_file", all.x = TRUE)
+
+head(TFBS_kvon_df)
+```
+
+## Create Subset file
+
+```{r}
+
+all_regions <- levels(as.factor(TFBS_kvon_df$alignment_file))
+length(all_regions) # 3483
+
+## randomly choose 200
+sub_regions <- sample(all_regions, 500)
+length(sub_regions)
+levels(as.factor(sub_regions))
+
+sub_TFBS_kvon_df <- TFBS_kvon_df[TFBS_kvon_df$alignment_file %in% sub_regions,]
+
+## check
+levels(as.factor(sub_TFBS_kvon_df$alignment_file))
+
+## write.csv(sub_TFBS_kvon_df, "../data/outputs/combined_TFBS_kvon_10August2017.csv")
 ```
 
 ### Visualization
@@ -67,20 +135,25 @@ summary(TFBS_df)
 [ ] Build Shiny app
 [ ] Finish the rest of the 
 [ ] Attach positive and negative presence in insitu
-[ ] 
-
-
-motif_file != "eve_SOLEXA.fm", motif_file != "cad_FlyReg.fm",
 
 ```{r}
-head(TFBS_df)
-TFBS_df %>% filter(alignment_file =="VT8808", score > 6) %>% 
+# Takes 23 sec to load
+TFBS_df <- read.csv("../data/outputs/combined_TFBS_kvon_10August2017.csv")
+TFBS_df <- TFBS_df[,-1]
+
+TFBS_df %>% filter(alignment_file =="VT0004", score > 5) %>% 
   ggplot(., aes(align_position,species, size = score, color = motif_file)) +
     geom_point(alpha = .3) + 
     facet_grid(strand~.) +
     theme_bw() +
     theme(text = element_text(size = 20)) 
+
+ggplot(cons_scores, aes(align_position, post.prob)) + 
+  geom_line() +
+  theme_bw()
+
+grid.newpage()
+grid.draw(rbind(ggplotGrob(plot1), ggplotGrob(plot2), size = "last"))
 ```
-?filter
 
 

@@ -23,9 +23,23 @@ RefTree <- as.character(unlist(read.table('../data/RefTree.txt')))
 
 path = "../data/fasta/kvon_alignments/"
 file.names <- dir(path, pattern =".fa")
+length(file.names)
+
+## remove output_VT10921.fa, which throws error for being too short.
+file.names <- Filter(function(x) !any(grepl("output_VT10921.fa", x)), file.names)
+file.names <- Filter(function(x) !any(grepl("output_VT51568.fa", x)), file.names)
+
+length(file.names)
+
+head(file.names)
+tail(file.names)
+
+file.names <- rev(file.names)
 
 for(i in 1:length(file.names)){
+  tryCatch({
   align <- read.msa(paste0(path, file.names[i]))
+  print(file.names[i])
 
 ## Remove Junk in Species identifiers (align$names)
   alignNames <- align$names
@@ -64,5 +78,6 @@ for(i in 1:length(file.names)){
   cons_scores$alignment <- file.names[i]
 
   write.csv(cons_scores, paste0("../data/outputs/consScore/", file.names[i], "_consScore.csv"))
-}
-
+})
+  }
+    
