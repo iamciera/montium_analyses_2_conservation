@@ -62,20 +62,18 @@ Read in and clean up PhastCons scores.
 
 ```{r}
 # takes about 2 min
-cons_scores_0 <- read.csv("../data/outputs/consScore/all_consScore.csv")
+cons_scores_0 <- read.csv("../data/outputs/consScore/allConsScore.csv")
 
 ## so not to reload dataset
 cons_scores <- cons_scores_0
 
 cons_scores <- cons_scores[,-1]
-colnames(cons_scores)[1] <- "position"
+colnames(cons_scores)[1] <- "raw_MEMB002A_pos"
 head(cons_scores)
 
 colnames(cons_scores)[3] <- "alignment_file"
 cons_scores$alignment_file <- gsub(".fa", "", cons_scores$alignment_file)
 cons_scores$alignment_file <- gsub("output_", "", cons_scores$alignment_file) 
-
-colnames(cons_scores)[1] <- "align_position"
 ```
 
 ## Kvon data about expression in D. mel
@@ -90,13 +88,10 @@ colnames(kvon)[5:9] <- c("DNase_Peaks_stage09", "DNase_Peaks_stage10", "DNase_Pe
 colnames(kvon)[12] <- "positive_GAL4_anyStage"
 ```
 
-## Merge Data?
+## Merge Data
 
 ```{r}
-## head(TFBS_df) # keep all
-## head(cons_scores) # keep all
-## test <- merge(cons_scores, TFBS_df, by = c("alignment_file", "align_position"))
-
+## Merge Kvon expression information with TFBS.
 kvon_sub <- kvon[,c(3,12,13,9)]
 head(kvon_sub)
 length(levels(as.factor(kvon_sub$alignment_file))) #7792
@@ -104,6 +99,17 @@ length(levels(as.factor(kvon_sub$alignment_file))) #7792
 TFBS_kvon_df <- merge(TFBS_df, kvon_sub, by = "alignment_file", all.x = TRUE)
 
 head(TFBS_kvon_df)
+
+
+## Merge TFBS alignment_pos and raw_pos to cons_score
+
+head(TFBS_df)
+MEMB002A_map <- subset(TFBS_df, species == "MEMB002A")
+
+
+head(MEMB002A_map)
+
+head(cons_scores)
 ```
 
 ## Create Subset file
@@ -123,37 +129,58 @@ sub_TFBS_kvon_df <- TFBS_kvon_df[TFBS_kvon_df$alignment_file %in% sub_regions,]
 ## check
 levels(as.factor(sub_TFBS_kvon_df$alignment_file))
 
+## write.c
 ## write.csv(sub_TFBS_kvon_df, "../data/outputs/combined_TFBS_kvon_10August2017.csv")
+
+##### ConsScore subfile
+## TFBS_df <- read.csv("../data/outputs/combined_TFBS_kvon_10August2017.csv")
+sub_regions <- levels(as.factor(TFBS_df$alignment_file))
+sub_regions <- as.data.frame(sub_regions)
+
+## write.table(sub_regions, "../data/outputs/sub_regions.csv", quote = FALSE, row.names = FALSE)
+
+dim(cons_scores)
+sub_cons_score <- cons_scores[cons_scores$alignment_file %in% sub_regions,]
+dim(sub_cons_score)
+
+## write.csv(sub_cons_score, "../data/outputs/sub_cons_score_10August2017.csv")
+
+
+##########Alignment Keys
+
+## alignment key (already subsetted previously, see quiver)
+## About ~2 min
+alignmentKeys <- read.table("../data/outputs/alignment_keys/sub_regions_alignment_key.csv", sep = "\t", header = TRUE)
+
+alignmentKeys <- alignmentKeys[,-1]
+
+
+## Retrieve species
+## Takes about 3 min
+speciesSplit  <- data.frame(do.call('rbind', strsplit(as.character(alignmentKeys$species), split = "|", fixed = TRUE)))
+
+## Remove old species id and replace
+alignmentKeys <- alignmentKeys[,-3]
+alignmentKeys <- cbind(alignmentKeys, speciesSplit$X6)
+colnames(alignmentKeys)[4] <- "species"
+
+##Subset by MEMBOO2A
+alignmentKeys <- subset(alignmentKeys, species == "MEMB002A")
+
+## Clean up alignment file notation
+alignmentKeys$alignment_file <- gsub("output_", "", alignmentKeys$alignment_file) 
+alignmentKeys$alignment_file <- gsub(".fa", "", alignmentKeys$alignment_file)
+
+head(alignmentKeys)
+
+write.csv(alignmentKeys, "../data/outputs/sub_alignment_keys_11August2017.csv", row.names = FALSE)
 ```
 
-### Visualization
+Most conserved Regions.
 
-## To-Do
-
-[ ] Need Phastcons score. 
-[ ] Need to zoom in 
-[ ] Build Shiny app
-[ ] Finish the rest of the 
-[ ] Attach positive and negative presence in insitu
-
+Subsetted using shell. See quiver notebook.
 ```{r}
-# Takes 23 sec to load
-TFBS_df <- read.csv("../data/outputs/combined_TFBS_kvon_10August2017.csv")
-TFBS_df <- TFBS_df[,-1]
+most_conserved <- read.csv("../data/outputs/sub_mostConserved.csv")
 
-TFBS_df %>% filter(alignment_file =="VT0004", score > 5) %>% 
-  ggplot(., aes(align_position,species, size = score, color = motif_file)) +
-    geom_point(alpha = .3) + 
-    facet_grid(strand~.) +
-    theme_bw() +
-    theme(text = element_text(size = 20)) 
-
-ggplot(cons_scores, aes(align_position, post.prob)) + 
-  geom_line() +
-  theme_bw()
-
-grid.newpage()
-grid.draw(rbind(ggplotGrob(plot1), ggplotGrob(plot2), size = "last"))
-```
 
 

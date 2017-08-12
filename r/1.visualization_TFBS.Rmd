@@ -1,0 +1,103 @@
+ ---
+title: "TFBS_visualization"
+author: "Ciera Martinez"
+date: "July 10, 2017"
+output: pdf_document
+---
+
+**Purpose**: The purpose is to prototype 
+1. what type of analysis I can do with the data set I have created. 
+2. see what else in terms of information / data I need to collect.
+
+### Set up 
+```{r}
+## Libraries
+library(ggplot2)
+library(grid)
+library(dplyr)
+library(reshape2)
+library(stringr)
+```
+
+This is contiued on from 0.visualization_TFBS_clean.Rmd.
+
+# Visualization
+## To-Do
+
+[x] Need Phastcons score. 
+[x] Keys to Phastcons score.
+[ ] Need to zoom in 
+[ ] Build Shiny app
+[x] Attach positive and negative presence in insitu
+
+```{r}
+## PhastCons - cons_score
+cons_scores <- read.csv("../data/outputs/sub_cons_score_10August2017.csv")
+cons_scores <- cons_scores[,-1]
+
+## PhastCons - most conserved
+most_conserved <- read.csv("../data/outputs/sub_mostConserved.csv")
+levels(most_conserved$alignment_file) #there are less than 500 levels because not all the files had conserved regions
+most_conserved <- most_conserved[,c(4,5,6,9)]
+head(most_conserved)
+
+## TFBS and Kvon expression data
+## Takes ~ 23 sec to load
+TFBS_df <- read.csv("../data/outputs/combined_TFBS_kvon_10August2017.csv")
+TFBS_df <- TFBS_df[,-1]
+levels(as.factor(TFBS_df$alignment_file)) #500
+head(TFBS_df)
+
+alignmentKeys <- read.csv("../data/outputs/sub_alignment_keys_11August2017.csv")
+levels(as.factor(alignmentKeys$alignment_file)) #500
+alignmentKeys <- alignmentKeys[,-4]
+colnames(alignmentKeys)[2] <- "raw_MEMB002A_pos"
+
+## Merge the two files
+cons_score_key <- merge(cons_scores, alignmentKeys)
+cons_score_key <- cons_score_key[,c(2,1,4,3)]
+head(cons_score_key)
+
+
+############## Move this to clean-up
+## Merge alignment keys with most conserved
+alignmentKeys_start <- alignmentKeys
+colnames(alignmentKeys_start)[2] <- "start"
+
+start_merged <- merge(most_conserved, alignmentKeys_start, by = c("alignment_file", "start"))
+colnames(start_merged)[5] <- "align_start"
+
+alignmentKeys_end <- alignmentKeys
+colnames(alignmentKeys_end)[2] <- "end"
+
+most_conserved_align <- merge(start_merged, alignmentKeys_end, by = c("alignment_file", "end"))
+colnames(most_conserved_align)[6] <- "align_end"
+
+most_conserved <- most_conserved_align
+```
+
+Acutual plotting.
+
+```{r}
+head(TFBS_df)
+
+plot1 <- TFBS_df %>% filter(alignment_file =="VT62738", score > 6) %>% 
+  ggplot(., aes(align_position,species, size = score, color = motif_file)) +
+    geom_point(alpha = .3) + 
+    facet_grid(strand~.) +
+    theme_bw() +
+    theme(text = element_text(size = 20)) 
+
+plot2 <- cons_score_key %>% filter(alignment_file == "VT62738") %>% 
+  ggplot(., aes(align_position, post.prob)) + 
+    geom_line() +
+    theme_bw()
+
+sub_con <- subset(cons_score_key, alignment_file == "VT63710")
+tail(sub_con)
+
+grid.newpage()
+grid.draw(rbind(ggplotGrob(plot1), ggplotGrob(plot2), size = "last"))
+```
+
+
