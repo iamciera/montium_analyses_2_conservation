@@ -17,7 +17,59 @@ library(grid)
 library(dplyr)
 library(reshape2)
 library(stringr)
+library(cowplot)
 ```
+
+Functions
+```{r}
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+```
+
+
 
 This is contiued on from 0.visualization_TFBS_clean.Rmd.
 
@@ -29,6 +81,8 @@ This is contiued on from 0.visualization_TFBS_clean.Rmd.
 [ ] Need to zoom in 
 [ ] Build Shiny app
 [x] Attach positive and negative presence in insitu
+[ ] Bring in new TFBS
+[ ] 
 
 ```{r}
 ## PhastCons - cons_score
@@ -46,6 +100,15 @@ head(most_conserved)
 TFBS_df <- read.csv("../data/outputs/combined_TFBS_kvon_10August2017.csv")
 TFBS_df <- TFBS_df[,-1]
 levels(as.factor(TFBS_df$alignment_file)) #500
+
+TFBS_df$strand <- gsub("positive", "positive strand", TFBS_df$strand)
+
+TFBS_df$strand <- gsub("negative", "negative strand", TFBS_df$strand)
+
+TFBS_df$positive <- gsub("1", "functional", TFBS_df$positive)
+
+TFBS_df$positive <- gsub("0", "non-functional", TFBS_df$positive)
+
 head(TFBS_df)
 
 alignmentKeys <- read.csv("../data/outputs/sub_alignment_keys_11August2017.csv")
@@ -76,13 +139,11 @@ colnames(most_conserved_align)[6] <- "align_end"
 most_conserved <- most_conserved_align
 ```
 
-Acutual plotting.
+Actual plotting.
 
 ```{r}
-head(TFBS_df)
-
 plot1 <- TFBS_df %>% filter(alignment_file =="VT62738", score > 6) %>% 
-  ggplot(., aes(align_position,species, size = score, color = motif_file)) +
+  ggplot(., aes(align_position, species, size = score, color = motif_file)) +
     geom_point(alpha = .3) + 
     facet_grid(strand~.) +
     theme_bw() +
@@ -94,10 +155,44 @@ plot2 <- cons_score_key %>% filter(alignment_file == "VT62738") %>%
     theme_bw()
 
 sub_con <- subset(cons_score_key, alignment_file == "VT63710")
-tail(sub_con)
-
-grid.newpage()
-grid.draw(rbind(ggplotGrob(plot1), ggplotGrob(plot2), size = "last"))
 ```
 
+Random Plot
 
+
+```{r}
+head(most_conserved)
+
+head(TFBS_)
+alignmentTypes <- levels(TFBS_df$alignment_file)
+
+#############
+randomFile <- sample(alignmentTypes, 1)
+
+TFBS_sub<- subset(TFBS_df, alignment_file == randomFile & score > 7)
+
+rect_sub <- subset(most_conserved, alignment_file == randomFile)
+
+rects <- data.frame(xstart = rect_sub$align_start[1:nrow(TFBS_sub)], xend = rect_sub$align_end[1:nrow(TFBS_sub)])
+
+myTitle <- paste0(TFBS_sub$alignment_file[1], " ", TFBS_sub$positive[1], " ", TFBS_df$sumStage[1])
+
+plot1 <- ggplot(data = TFBS_sub, aes(align_position, species, size = score, color = motif_file)) +
+    geom_point(alpha = .2) +
+    facet_grid(strand~.) +
+    geom_point(alpha = .4) +
+    theme_bw() +
+    annotate("rect", xmin = rects$xstart, xmax = rects$xend, ymin = -Inf, ymax = Inf, alpha = .2)+
+    labs(title = myTitle) +
+    theme(text = element_text(size = 20)) +
+    theme(legend.position="bottom")
+  
+plot2 <- cons_score_key %>% filter(alignment_file == randomFile) %>% 
+  ggplot(., aes(align_position, post.prob)) + 
+    geom_line() +
+    theme_classic() +
+    theme(text = element_text(size = 20)) 
+
+plot_grid(plot1, plot2, labels = c("A", "B"), nrow = 2, align = "v", axis = "l")
+
+```
