@@ -1,5 +1,5 @@
  ---
-title: "TFBS_visualization"
+title: "TFBS Cleaning"
 author: "Ciera Martinez"
 date: "July 10, 2017"
 output: pdf_document
@@ -22,7 +22,8 @@ library(stringr)
 Read in and clean up all TFBS found 
 ```{r}
 # This takes about 5 min
-TFBS_df_0 <- read.table("../data/outputs/map_motif_output/all.csv", sep = "\t", header = FALSE)
+## Already Subsetted, but still 2.5GB
+TFBS_df_0 <- read.table("../data/outputs/map_motif_output/all_map_motif_output_sub.csv", sep = "\t", header = FALSE)
 
 # So not to have to read in again
 TFBS_df <- TFBS_df_0
@@ -32,10 +33,11 @@ colnames(TFBS_df) <- c("position", "score",	"seq_len",	"species", "raw_position"
 
 ## as.factor species
 head(TFBS_df)
+
 TFBS_df$species <- as.factor(TFBS_df$species)
 
 ## Retrieve species
-## Takes about 3 min
+## Takes about 5 min
 speciesSplit  <- data.frame(do.call('rbind', strsplit(as.character(TFBS_df$species), split = "|", fixed = TRUE)))
 
 ## Remove old species id and replace
@@ -50,10 +52,49 @@ TFBS_df$alignment_file <- gsub(".fa", "", TFBS_df$alignment_file)
 ## Clean up motif_file
 TFBS_df$motif_file <- gsub(".fm", "", TFBS_df$motif_file)
 
+## Make prettier for graphs ahead of time
+TFBS_df$strand <- gsub("positive", "positive strand", TFBS_df$strand)
+TFBS_df$strand <- gsub("negative", "negative strand", TFBS_df$strand)
+
 ## Check
 head(TFBS_df)
+dim(TFBS_df)
 str(TFBS_df)
-summary(TFBS_df)
+## summary(TFBS_df)
+```
+
+Alignment Keys -Stays reletively the same, long as alignments are the same.
+
+```{r}
+##########Alignment Keys
+
+## alignment key (already subsetted previously, see quiver)
+## About ~2 min
+# alignmentKeys <- read.table("../data/outputs/alignment_keys/sub_regions_alignment_key.csv", sep = "\t", header = TRUE)
+# 
+# alignmentKeys <- alignmentKeys[,-1]
+# 
+# ## Retrieve species
+# ## Takes about 3 min
+# speciesSplit  <- data.frame(do.call('rbind', strsplit(as.character(alignmentKeys$species), split = "|", fixed = TRUE)))
+# 
+# ## Remove old species id and replace
+# alignmentKeys <- alignmentKeys[,-3]
+# alignmentKeys <- cbind(alignmentKeys, speciesSplit$X6)
+# colnames(alignmentKeys)[4] <- "species"
+# 
+# ##Subset by MEMBOO2A
+# alignmentKeys <- subset(alignmentKeys, species == "MEMB002A")
+# 
+# ## Clean up alignment file notation
+# alignmentKeys$alignment_file <- gsub("output_", "", alignmentKeys$alignment_file) 
+# alignmentKeys$alignment_file <- gsub(".fa", "", alignmentKeys$alignment_file)
+# 
+# head(alignmentKeys)
+
+## write.csv(alignmentKeys, "../data/outputs/sub_alignment_keys_11August2017.csv", row.names = FALSE)
+
+alignmentKeys <- read.csv("../data/outputs/sub_alignment_keys_11August2017.csv")
 ```
 
 ## PhastCons score per alignment
@@ -61,19 +102,69 @@ summary(TFBS_df)
 Read in and clean up PhastCons scores.
 
 ```{r}
-# takes about 2 min
-cons_scores_0 <- read.csv("../data/outputs/consScore/allConsScore.csv")
+
+cons_scores_0 <- read.csv("../data/outputs/sub_consScore.csv")
 
 ## so not to reload dataset
 cons_scores <- cons_scores_0
+colnames(cons_scores) <- c("","coord","post.prob","alignment")
 
 cons_scores <- cons_scores[,-1]
 colnames(cons_scores)[1] <- "raw_MEMB002A_pos"
-head(cons_scores)
+cons_scores$raw_MEMB002A_pos <- as.numeric(cons_scores$raw_MEMB002A_pos)
 
 colnames(cons_scores)[3] <- "alignment_file"
 cons_scores$alignment_file <- gsub(".fa", "", cons_scores$alignment_file)
 cons_scores$alignment_file <- gsub("output_", "", cons_scores$alignment_file) 
+
+### Alignmnet Keys For merging
+levels(as.factor(alignmentKeys$alignment_file)) #500
+alignmentKeys <- alignmentKeys[,-4]
+colnames(alignmentKeys)[2] <- "raw_MEMB002A_pos"
+
+## Merge the two files
+cons_score_key <- merge(cons_scores, alignmentKeys)
+head(cons_score_key)
+cons_score_key <- cons_score_key[,c(1,3,2,4)]
+
+## write.csv(cons_score_key, "../data/outputs/sub_cons_score_13August2017.csv", row.names = FALSE)
+```
+
+Most Conserved
+
+```{r}
+## PhastCons - most conserved
+## "","seqname","src","feature","start","end","score","strand","attribute","alignment"
+most_conserved <- read.csv("../data/outputs/sub_mostConserved.csv")
+colnames(most_conserved) <- c("","seqname","src","feature","start","end","score","strand","attribute","alignment_file")
+
+## Alignment file
+most_conserved$alignment_file <- gsub(".fa", "", most_conserved$alignment_file)
+most_conserved$alignment_file <- gsub("output_", "", most_conserved$alignment_file) 
+
+levels(as.factor(most_conserved$alignment_file)) #500
+
+## Keep only columns we need
+most_conserved <- most_conserved[,c(5,6,7,10)]
+
+## Merge alignment keys with most conserved
+alignmentKeys_start <- alignmentKeys
+colnames(alignmentKeys_start)[2] <- "start"
+
+start_merged <- merge(most_conserved, alignmentKeys_start, by = c("alignment_file", "start"))
+colnames(start_merged)[5] <- "align_start"
+
+alignmentKeys_end <- alignmentKeys
+colnames(alignmentKeys_end)[2] <- "end"
+
+most_conserved_align <- merge(start_merged, alignmentKeys_end, by = c("alignment_file", "end"))
+colnames(most_conserved_align)[6] <- "align_end"
+
+most_conserved <- most_conserved_align
+
+## Write out
+
+write.csv(most_conserved, "../data/outputs/sub_most_conserved_clean_13August2017.csv", row.names = FALSE)
 ```
 
 ## Kvon data about expression in D. mel
@@ -86,6 +177,7 @@ kvon <- kvon[,-1]
 colnames(kvon)[3] <- "alignment_file"
 colnames(kvon)[5:9] <- c("DNase_Peaks_stage09", "DNase_Peaks_stage10", "DNase_Peaks_stage11", "DNase_Peaks_stage14", "DNase_Peaks_sumStages")
 colnames(kvon)[12] <- "positive_GAL4_anyStage"
+head(kvon)
 ```
 
 ## Merge Data
@@ -93,94 +185,45 @@ colnames(kvon)[12] <- "positive_GAL4_anyStage"
 ```{r}
 ## Merge Kvon expression information with TFBS.
 kvon_sub <- kvon[,c(3,12,13,9)]
-head(kvon_sub)
 length(levels(as.factor(kvon_sub$alignment_file))) #7792
 
-TFBS_kvon_df <- merge(TFBS_df, kvon_sub, by = "alignment_file", all.x = TRUE)
+## Takes a few min.
+head(TFBS_df)
+dim(TFBS_df)
+head(kvon_sub)
+dim(kvon_sub)
 
+TFBS_kvon_df <- merge(TFBS_df, kvon_sub, by = "alignment_file")
 head(TFBS_kvon_df)
 
+write.csv(TFBS_kvon_df, "../data/outputs/combined_TFBS_kvon_13August2017.csv", row.names = FALSE)
 
-## Merge TFBS alignment_pos and raw_pos to cons_score
-
-head(TFBS_df)
-MEMB002A_map <- subset(TFBS_df, species == "MEMB002A")
-
-
-head(MEMB002A_map)
-
-head(cons_scores)
 ```
 
 ## Create Subset file
 
 ```{r}
 
-all_regions <- levels(as.factor(TFBS_kvon_df$alignment_file))
-length(all_regions) # 3483
-
-## randomly choose 200
-sub_regions <- sample(all_regions, 500)
-length(sub_regions)
-levels(as.factor(sub_regions))
-
-sub_TFBS_kvon_df <- TFBS_kvon_df[TFBS_kvon_df$alignment_file %in% sub_regions,]
-
-## check
-levels(as.factor(sub_TFBS_kvon_df$alignment_file))
-
-## write.c
+# all_regions <- levels(as.factor(TFBS_kvon_df$alignment_file))
+# length(all_regions) # 3483
+# 
+# ## randomly choose 500
+# sub_regions <- sample(all_regions, 500)
+# length(sub_regions)
+# levels(as.factor(sub_regions))
+# 
+# sub_TFBS_kvon_df <- TFBS_kvon_df[TFBS_kvon_df$alignment_file %in% sub_regions,]
+# 
+# ## check
+# levels(as.factor(sub_TFBS_kvon_df$alignment_file))
 ## write.csv(sub_TFBS_kvon_df, "../data/outputs/combined_TFBS_kvon_10August2017.csv")
 
 ##### ConsScore subfile
 ## TFBS_df <- read.csv("../data/outputs/combined_TFBS_kvon_10August2017.csv")
-sub_regions <- levels(as.factor(TFBS_df$alignment_file))
-sub_regions <- as.data.frame(sub_regions)
-
 ## write.table(sub_regions, "../data/outputs/sub_regions.csv", quote = FALSE, row.names = FALSE)
-
-dim(cons_scores)
-sub_cons_score <- cons_scores[cons_scores$alignment_file %in% sub_regions,]
-dim(sub_cons_score)
-
 ## write.csv(sub_cons_score, "../data/outputs/sub_cons_score_10August2017.csv")
 
 
-##########Alignment Keys
-
-## alignment key (already subsetted previously, see quiver)
-## About ~2 min
-alignmentKeys <- read.table("../data/outputs/alignment_keys/sub_regions_alignment_key.csv", sep = "\t", header = TRUE)
-
-alignmentKeys <- alignmentKeys[,-1]
-
-
-## Retrieve species
-## Takes about 3 min
-speciesSplit  <- data.frame(do.call('rbind', strsplit(as.character(alignmentKeys$species), split = "|", fixed = TRUE)))
-
-## Remove old species id and replace
-alignmentKeys <- alignmentKeys[,-3]
-alignmentKeys <- cbind(alignmentKeys, speciesSplit$X6)
-colnames(alignmentKeys)[4] <- "species"
-
-##Subset by MEMBOO2A
-alignmentKeys <- subset(alignmentKeys, species == "MEMB002A")
-
-## Clean up alignment file notation
-alignmentKeys$alignment_file <- gsub("output_", "", alignmentKeys$alignment_file) 
-alignmentKeys$alignment_file <- gsub(".fa", "", alignmentKeys$alignment_file)
-
-head(alignmentKeys)
-
-write.csv(alignmentKeys, "../data/outputs/sub_alignment_keys_11August2017.csv", row.names = FALSE)
 ```
-
-Most conserved Regions.
-
-Subsetted using shell. See quiver notebook.
-```{r}
-most_conserved <- read.csv("../data/outputs/sub_mostConserved.csv")
-
 
 
