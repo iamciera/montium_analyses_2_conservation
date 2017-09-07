@@ -30,7 +30,7 @@ This is contiued on from 0.visualization_TFBS_clean.Rmd.
 [ ] Need to zoom in 
 [ ] Build Shiny app
 [x] Attach positive and negative presence in insitu
-[ ] Bring in new TFBS
+[x] Bring in new TFBS
 
 
 ```{r}
@@ -54,43 +54,55 @@ TFBS_df$positive_GAL4_anyStage <- gsub("1", "yes", TFBS_df$positive_GAL4_anyStag
 TFBS_df$positive_GAL4_anyStage <- gsub("0", "no", TFBS_df$positive_GAL4_anyStage)
 
 head(TFBS_df)
+
+## Change Species Name
+TFBS_df$species <- gsub("MEMB003C", "D. asahinai", TFBS_df$species) 
+TFBS_df$species <- gsub("MEMB002A", "D. rufa", TFBS_df$species)
+TFBS_df$species <- gsub("MEMB002C", "D. lacteicornis", TFBS_df$species)
+TFBS_df$species <- gsub("MEMB003D", "D. bocki", TFBS_df$species)
+TFBS_df$species <- gsub("MEMB002D", "D. bunnanda", TFBS_df$species) 
+TFBS_df$species <- gsub("MEMB002E", "D. serrata", TFBS_df$species)
+TFBS_df$species <- gsub("MEMB003B", "D. birch", TFBS_df$species) 
+TFBS_df$species <- gsub("MEMB003F", "D. jambulina", TFBS_df$species) 
+TFBS_df$species <- gsub("MEMB002F", "D. pectinifera", TFBS_df$species) 
 ```
 
-Actual plotting.
+subset based on score
+```{r}
+levels(TFBS_df$motif_file)
+bcd_cad_zel <- c("bcd_FlyReg", "cad_FlyReg", "zelda_")
+
+TFBS1 <- subset(TFBS_df, motif_file == bcd_cad_zel & score > 6 )
+TFBS2 <- subset(TFBS_df, motif_file == "hb_flyreg" & score > 4.5)
+TFBS3 <- subset(TFBS_df, motif_file == "gt_nar2008" & score > 2.5)
+TFBS4 <- subset(TFBS_df, motif_file == "kr_FlyReg" & score > 3.5)
+
+TFBS_df_sub <- rbind(TFBS1, TFBS2, TFBS3, TFBS4)
+```
+
 
 ```{r}
-TFBS_df %>% filter(alignment_file == randomFile, score > 6) %>% 
-  ggplot(., aes(align_position, species, size = score, color = motif_file)) +
-    geom_point(alpha = .3) + 
-    facet_grid(strand~.) +
-    theme_bw() +
-    theme(text = element_text(size = 20)) 
-
-plot2 <- cons_scores %>% filter(alignment_file == "VT62738") %>% 
-  ggplot(., aes(raw_MEMB002A_pos, post.prob)) + 
-    geom_line() +
-    theme_bw()
+## "VT58684"
+## Make a list of all the alignment_files available
+alignmentTypes <- levels(TFBS_df$alignment_file)
 ```
 
 Random Plot
 
-
 ```{r}
-
-## Make a list of all the alignment_files available
-alignmentTypes <- levels(TFBS_df$alignment_file)
-
-#############
 randomFile <- sample(alignmentTypes, 1)
 
-TFBS_sub <- subset(TFBS_df, alignment_file == randomFile & score > 6)
-head(TFBS_sub)
+## Subset random file
+TFBS_sub <- subset(TFBS_df_sub, alignment_file == randomFile)
 
+## retrive grey square information
 rect_sub <- subset(most_conserved, alignment_file == randomFile)
-
 rects <- data.frame(xstart = rect_sub$align_start[1:nrow(rect_sub)], xend = rect_sub$align_end[1:nrow(rect_sub)])
 
+## Create Title
 myTitle <- paste0("\n ID:", TFBS_sub$alignment_file[1], "\n GAL4 expression: ", TFBS_sub$positive_GAL4_anyStage[1], "\n DNAse Peaks: ", TFBS_df$DNase_Peaks_sumStages[1], "\n")
+
+## alignment mapping plot 
 
 plot1 <- ggplot(TFBS_sub, aes(align_position, species, size = score, color = motif_file)) +
     geom_point(alpha = .2) +
@@ -104,16 +116,19 @@ plot1 <- ggplot(TFBS_sub, aes(align_position, species, size = score, color = mot
           legend.box = "vertical",
           legend.box.just = "left",
           legend.justification = c(0,1),
-          axis.text.x = element_blank()) +
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(hjust = 0)) +
      labs(x = "") +
-  guides(colour = guide_legend(override.aes = list(size=10)))
-  
+     guides(colour = guide_legend(override.aes = list(size = 10)))
+
+## Conservation probability plot 
 plot2 <- cons_scores %>% filter(alignment_file == randomFile) %>% 
   ggplot(., aes(align_position, post.prob)) + 
     geom_line() +
     theme_classic() +
     theme(text = element_text(size = 20)) 
 
+## Put plots together and make purty
 plot_grid(plot1, plot2, labels = c("A", "B"), nrow = 2, ncol = 1, align = "v", axis = "l", rel_heights = c(1, .4))
 
 ```
