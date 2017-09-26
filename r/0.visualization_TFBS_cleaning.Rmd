@@ -32,8 +32,6 @@ TFBS_df <- TFBS_df[,-1]
 colnames(TFBS_df) <- c("position", "score",	"seq_len",	"species", "raw_position",	"strand",	"align_position",	"alignment_file", "motif_file")
 
 ## as.factor species
-head(TFBS_df)
-
 TFBS_df$species <- as.factor(TFBS_df$species)
 
 ## Retrieve species

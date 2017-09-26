@@ -64,13 +64,13 @@ FitTree <- neutralMod$tree
 FitTreePlot <- read.tree(text = FitTree)
 plot(FitTreePlot, type = "phylogram")
 
-
-## sites for minimal es2 (~.47)
 RHO <- .3 ## I'm not sure about this value (relative evo rate). Check sensitivity
 ## results are quite robust to changes: .5--.32 cons,.3--.302,.1--.26
 phast <- phastCons(align, neutralMod,rho = RHO)
 most_conserved <- phast$most.conserved
 cons_scores <- phast$post.prob.wig
+
+getAnywhere(phastCons)
 
 ## Visualizing results
 ## plot(cons_scores) 
