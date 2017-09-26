@@ -1,9 +1,14 @@
 ### Creating SQL Data Base out of alignment keys
 
 ## libraries
-require("RSQLite")
 library(RSQLite)
 library(tidyverse)
+library(dbplyr)
+library(dplyr)
+
+#########################
+## alignmentKeys
+#########################
 
 ## First try with just one
 ## Takes ~5min
@@ -36,13 +41,14 @@ str(alignmentKeys)
 alignmentKeys$align_position <- as.numeric(alignmentKeys$align_position)
 alignmentKeys$raw_position <- as.numeric(alignmentKeys$raw_position)
 
-## Make the database
+
+
+## Make the database for alignmentKeys
 con <- dbConnect(SQLite(), "../data/sql/alignmentKeys.sqlite")
 dbWriteTable(con, name = "alignmentKeys", value = transform(alignmentKeys), row.names = FALSE, append = TRUE)
 dbDisconnect(con)
 
 ## Test Database
-
 con <- dbConnect(SQLite(), "../data/sql/alignmentKeys.sqlite")
 
 ## Query.  Get only the align_position results
