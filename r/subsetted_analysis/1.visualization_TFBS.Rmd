@@ -1,3 +1,6 @@
+---
+output: html_document
+---
  ---
 title: "TFBS_visualization"
 author: "Ciera Martinez"
@@ -35,18 +38,18 @@ This is contiued on from 0.visualization_TFBS_clean.Rmd.
 
 ```{r}
 ## PhastCons - cons_score
-cons_scores <- read.csv("../data/outputs/sub_cons_score_13August2017.csv")
+cons_scores <- read.csv("../../data/outputs/subsettedData_1/sub_cons_score_13August2017.csv")
 head(cons_scores)
 
 
 ## PhastCons - most conserved
-most_conserved <- read.csv("../data/outputs/sub_most_conserved_clean_13August2017.csv")
+most_conserved <- read.csv("../../data/outputs/subsettedData_1/sub_most_conserved_clean_13August2017.csv")
 levels(most_conserved$alignment_file) #there are less than 500 levels because not all the files had conserved regions
 head(most_conserved)
 
 ## TFBS and Kvon expression data
 ## Takes ~4 min to load
-TFBS_df <- read.csv("../data/outputs/combined_TFBS_kvon_13August2017.csv")
+TFBS_df <- read.csv("../../data/outputs/combined_TFBS_kvon_13August2017.csv")
 levels(as.factor(TFBS_df$alignment_file)) #500
 levels(as.factor(TFBS_df$motif_file))
 
@@ -84,7 +87,7 @@ TFBS4 <- subset(TFBS_df, motif_file == "kr_FlyReg" & score > 3.5)
 TFBS_df_sub <- rbind(TFBS1, TFBS2, TFBS3, TFBS4)
 head(TFBS_df_sub)
 
-testMerge <- merge(TFBS_df_sub)
+#testMerge <- merge(TFBS_df_sub)
 ```
 
 
@@ -110,8 +113,8 @@ rects <- data.frame(xstart = rect_sub$align_start[1:nrow(rect_sub)], xend = rect
 myTitle <- paste0("\n ID:", TFBS_sub$alignment_file[1], "\n GAL4 expression: ", TFBS_sub$positive_GAL4_anyStage[1], "\n DNAse Peaks: ", TFBS_df$DNase_Peaks_sumStages[1], "\n")
 
 ## alignment mapping plot 
-
-plot1 <- ggplot(TFBS_sub, aes(align_position, species, size = score, color = motif_file)) +
+head(TFBS_sub)
+plot1 <- ggplot(TFBS_sub, aes(align_position, species, color = motif_file)) +
     geom_point(alpha = .2) +
     facet_grid(strand~.) +
     geom_point(alpha = .4) +
@@ -137,5 +140,4 @@ plot2 <- cons_scores %>% filter(alignment_file == randomFile) %>%
 
 ## Put plots together and make purty
 plot_grid(plot1, plot2, labels = c("A", "B"), nrow = 2, ncol = 1, align = "v", axis = "l", rel_heights = c(1, .4))
-
 ```

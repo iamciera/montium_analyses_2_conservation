@@ -41,8 +41,6 @@ str(alignmentKeys)
 alignmentKeys$align_position <- as.numeric(alignmentKeys$align_position)
 alignmentKeys$raw_position <- as.numeric(alignmentKeys$raw_position)
 
-
-
 ## Make the database for alignmentKeys
 con <- dbConnect(SQLite(), "../data/sql/alignmentKeys.sqlite")
 dbWriteTable(con, name = "alignmentKeys", value = transform(alignmentKeys), row.names = FALSE, append = TRUE)

@@ -1,0 +1,152 @@
+ ---
+title: "TFBS_visualization"
+author: "Ciera Martinez"
+date: "July 10, 2017"
+output: pdf_document
+---
+
+**Purpose**: The purpose is to prototype 
+1. what type of analysis I can do with the data set I have created. 
+2. see what else in terms of information / data I need to collect.
+
+### Set up 
+```{r}
+## Libraries
+library(ggplot2)
+library(grid)
+library(tidyverse)
+library(stringr)
+library(cowplot)
+library(RSQLite)
+library(dbplyr)
+library(dplyr)
+library(DBI)
+```
+
+This is contiued on from 0.visualization_TFBS_clean.Rmd.
+
+# Visualization
+## To-Do
+
+[x] Need Phastcons score. 
+[x] Keys to Phastcons score.
+[ ] Need to zoom in 
+[ ] Build Shiny app
+[x] Attach positive and negative presence in insitu
+[x] Bring in new TFBS
+
+
+```{r}
+## Connect to Data base
+con_db <- DBI::dbConnect(RSQLite::SQLite(), "../../data/sql/TFBS_cons_DB.sqlite")
+
+## List all the tables in the database
+dbListTables(con_db)
+
+###################
+## Cons - Score
+###################
+
+## List headers
+dbListFields(con_db, "consScore")  
+cons_scores_sql <- tbl(con_db, "consScore")
+
+## Just one file
+
+cons_scores <- cons_scores_sql %>%
+  filter(alignment_file == "VT14983") %>%
+  collect()
+
+#############################
+## PhastCons - most conserved
+#############################
+
+## List headers
+dbListFields(con_db, "mostConserved")  
+most_conserved_sql <- tbl(con_db, "mostConserved")
+
+## Just one file
+most_conserved <- most_conserved_sql %>%
+  filter(alignment_file == "VT14983") %>%
+  collect()
+
+###############################
+## TFBS and Kvon expression data - Motif Map
+###############################
+
+## List headers
+dbListFields(con_db, "motifMap")  
+motifMap_sql <- tbl(con_db, "motifMap")
+
+## Just one file
+## This is still very huge.  Takes ~30 sec to load
+## 1: Unknown or uninitialised column: 'DNase_Peaks_sumStages'. 
+
+TFBS_df <- motifMap_sql %>%
+  filter(alignment_file == "VT14983") %>%
+  collect()
+
+str(as.factor(TFBS_df$strand))
+
+## Add Kvon Data
+## Kvon data Info
+kvon <- read.csv("../../../montium_analyses_1_alignment/analyses_1_alignment/pipeline_output_4/R/kvonMergedWithThomasStageSpecific_15November2016.csv", header=T, na.strings = c("","NA"), check.names = TRUE)
+kvon <- kvon[,-1]
+
+colnames(kvon)[3] <- "alignment_file"
+colnames(kvon)[5:9] <- c("DNase_Peaks_stage09", "DNase_Peaks_stage10", "DNase_Peaks_stage11", "DNase_Peaks_stage14", "DNase_Peaks_sumStages")
+colnames(kvon)[12] <- "positive_GAL4_anyStage"
+head(kvon)
+
+## Merge Kvon Data
+## Merge Kvon expression information with TFBS.
+kvon_sub <- kvon[,c(3,12,13,9)]
+length(levels(as.factor(kvon_sub$alignment_file))) #7792
+
+## 
+TFBS_df <- merge(TFBS_df, kvon_sub, by = "alignment_file")
+
+
+## Clean
+TFBS_df$positive_GAL4_anyStage <- gsub("1", "yes", TFBS_df$positive_GAL4_anyStage)
+TFBS_df$positive_GAL4_anyStage <- gsub("0", "no", TFBS_df$positive_GAL4_anyStage)
+
+## Change Species Name
+TFBS_df$species <- gsub("MEMB003C", "D. asahinai", TFBS_df$species) 
+TFBS_df$species <- gsub("MEMB002A", "D. rufa", TFBS_df$species)
+TFBS_df$species <- gsub("MEMB002C", "D. lacteicornis", TFBS_df$species)
+TFBS_df$species <- gsub("MEMB003D", "D. bocki", TFBS_df$species)
+TFBS_df$species <- gsub("MEMB002D", "D. bunnanda", TFBS_df$species) 
+TFBS_df$species <- gsub("MEMB002E", "D. serrata", TFBS_df$species)
+TFBS_df$species <- gsub("MEMB003B", "D. birch", TFBS_df$species) 
+TFBS_df$species <- gsub("MEMB003F", "D. jambulina", TFBS_df$species)
+TFBS_df$species <- gsub("MEMB002F", "D. pectinifera", TFBS_df$species) 
+TFBS_df$strand <- gsub("positive strand", "+ strand", TFBS_df$strand) 
+TFBS_df$strand <- gsub("negative strand", "- strand", TFBS_df$strand)
+```
+
+subset based on score
+```{r}
+levels(as.factor(TFBS_df$motif_file)) ## No zelda :(
+bcd_cad <- c("bcd_FlyReg", "cad_FlyReg")
+
+TFBS1 <- subset(TFBS_df, motif_file == bcd_cad & score > 6 )
+TFBS2 <- subset(TFBS_df, motif_file == "hb_flyreg" & score > 4.2)
+TFBS3 <- subset(TFBS_df, motif_file == "eve_SOLEXA")
+TFBS4 <- subset(TFBS_df, motif_file == "kr_FlyReg" & score > 3.5)
+
+ggplot(TFBS_df_sub, aes(motif_file, score)) +
+  geom_boxplot() +
+  geom_point(alpha = .1, position = position_jitter())
+
+TFBS_df_sub <- rbind(TFBS1,  TFBS3, TFBS4)
+levels(as.factor(TFBS_df_sub$strand))
+#TFBS_df <- TFBS_df_sub
+```
+
+################## This is the start of visualization
+```{r}
+## Make a list of all the alignment_files available
+alignmentTypes <- levels(TFBS_df$alignment_file)
+```
+

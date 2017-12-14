@@ -1,0 +1,91 @@
+ ---
+title: "TFBS_visualization"
+author: "Ciera Martinez"
+date: "July 10, 2017"
+output: pdf_document
+---
+
+**Purpose**: The purpose is to prototype 
+1. what type of analysis I can do with the data set I have created. 
+2. see what else in terms of information / data I need to collect.
+
+### Set up 
+```{r}
+## Libraries
+library(ggplot2)
+library(grid)
+library(tidyverse)
+library(stringr)
+library(cowplot)
+library(RSQLite)
+library(dbplyr)
+library(dplyr)
+library(DBI)
+```
+
+This is contiued on from 0.visualization_TFBS_clean.Rmd.
+
+# Visualization
+## To-Do
+
+[x] Need Phastcons score. 
+[x] Keys to Phastcons score.
+[ ] Need to zoom in 
+[ ] Build Shiny app
+[x] Attach positive and negative presence in insitu
+[x] Bring in new TFBS
+
+
+
+#####This is the start of visualization
+```{r}
+## Make a list of all the alignment_files available
+alignmentTypes <- levels(TFBS_df$alignment_file)
+```
+
+## Random Plot
+
+```{r}
+randomFile <- sample(alignmentTypes, 1)
+randomFile <- "VT14983"
+
+## Subset random file
+TFBS_sub <- subset(TFBS_df, alignment_file == randomFile)
+head(TFBS_sub)
+## retrive grey square information
+rect_sub <- subset(most_conserved, alignment_file == randomFile)
+rects <- data.frame(xstart = rect_sub$align_start[1:nrow(rect_sub)], xend = rect_sub$align_end[1:nrow(rect_sub)])
+
+## Create Title
+myTitle <- paste0("\n ID:", TFBS_sub$alignment_file[1], "\n GAL4 expression: ", TFBS_sub$positive_GAL4_anyStage[1], "\n DNAse Peaks: ", TFBS_df$DNase_Peaks_sumStages[1], "\n")
+
+## alignment mapping plot 
+
+plot1 <- ggplot(TFBS_df_sub, aes(align_position, species, size = score, color = motif_file)) +
+    geom_point(alpha = .2) +
+    facet_grid(strand~.) +
+    geom_point(alpha = .4) +
+    theme_bw() +
+    annotate("rect", xmin = rects$xstart, xmax = rects$xend, ymin = -Inf, ymax = Inf, alpha = .2) +
+    labs(title = myTitle) +
+    theme(text = element_text(size = 17),
+          legend.position = "top",
+          legend.box = "vertical",
+          legend.box.just = "left",
+          legend.justification = c(0,1),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(hjust = 0)) +
+     labs(x = "") +
+     guides(colour = guide_legend(override.aes = list(size = 10)))
+
+## Conservation probability plot 
+plot2 <- cons_scores %>% filter(alignment_file == randomFile) %>% 
+  ggplot(., aes(align_position, post.prob)) + 
+    geom_line() +
+    theme_classic() +
+    theme(text = element_text(size = 20)) 
+
+## Put plots together and make purty
+plot_grid(plot1, plot2, labels = c("A", "B"), nrow = 2, ncol = 1, align = "v", axis = "l", rel_heights = c(1, .4))
+
+```

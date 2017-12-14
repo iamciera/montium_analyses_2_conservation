@@ -65,7 +65,7 @@ cons_score_key <- cons_score_key %>%
 ############################
 
 ## Make the database for alignmentKeys
-con_db <- dbConnect(SQLite(), "../data/sql/consScore.sqlite")
+con_db <- dbConnect(SQLite(), "../data/sql/TFBS_cons_DB.sqlite")
 dbWriteTable(con_db, name = "consScore", value = transform(cons_score_key), row.names = FALSE, append = TRUE)
 dbDisconnect(con_db)
 
